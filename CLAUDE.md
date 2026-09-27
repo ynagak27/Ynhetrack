@@ -21,10 +21,32 @@ near-zero monthly cost.
 
 Update these status lines at the end of every session.
 
-1. **Log it** — Worker + D1 + phone form for weight, drinks, exercise, sleep; CSV import of past weights; CSV export. Done when a full day logs in under 30 seconds. — **Status: in progress**
+1. **Log it** — Worker + D1 + phone form for weight, drinks, exercise, sleep; CSV import of past weights; CSV export. Done when a full day logs in under 30 seconds. — **Status: code complete (2026-09-27); waiting on the user to deploy (SETUP.md) and confirm a full day logs in < 30 s on the phone**
 2. **See it** — dashboard: daily weight dots, 7-day rolling average line, week grid, this week vs last week. — **Status: not started**
 3. **Review it** — Sunday-evening cron, Claude-written review with rules fallback, Reviews page, email copy. Done when a review arrives two Sundays running without a manual trigger. — **Status: not started**
 4. **Coach it (optional)** — tune the review prompt, push notification from the installed app. — **Status: not started**
+
+## Repo map
+
+- `web/` — phone PWA, no build step. `js/app.js` (UI + state), `js/api.js` (fetch + localStorage connection),
+  `js/dates.js` (local-date helpers, tested), `sw.js` (network-first shell cache), `manifest.webmanifest`, `icons/`.
+- `worker/src/` — `index.js` (router), `http.js` (CORS, bearer auth), `validate.js`, `days.js` (SQL builders,
+  row merging), `csv.js` (import parser, export), `dates.js`. Pure modules are kept free of D1 so they're testable.
+- `worker/migrations/` — D1 migrations; add a new numbered file for every schema change, never edit an applied one.
+- `worker/test/` — `node:test` suites. `api.test.js` runs the real fetch handler against `fake-d1.js`
+  (the real migration on Node's built-in `node:sqlite`), so no test dependencies are needed.
+- Commands: `npm test` (repo root, all tests); in `worker/`: `npm run dev`, `npm run deploy`,
+  `npm run db:migrate:local|remote`. Serve the app locally with `python3 -m http.server 8000` in `web/`.
+
+## API (phase 1)
+
+All routes except `GET /api/health` need `Authorization: Bearer <API_TOKEN>`.
+`GET /api/days?from&to` (≤ 400 days) · `GET /api/days/:date` · `PUT /api/days` (`{timezone, days:[…]}`, ≤ 7 days,
+one D1 batch) · `PUT /api/days/:date` · `POST /api/import/weights?tz=` (CSV body, ≤ 1200 rows) ·
+`GET /api/export.csv` · `GET /api/settings`.
+A day update has optional sections `log` {weight_kg, sleep_hours, note}, `drinks` (null = unanswered,
+[] = none, [{type,count}]) and `exercise` ([{kind, minutes, effort_1_5}]); a section that is sent replaces
+what's stored for that date, and a section left out is untouched.
 
 ## Rules for working on this repo
 
@@ -57,3 +79,6 @@ Add every decision made with the user here, newest last, with the date.
 - 2026-09-27 — Phase 1 needs a connection to save (app shell works offline; no offline queue).
 - 2026-09-27 — Worker URL and API token are entered once on the app's Settings screen and kept in the phone's localStorage.
 - 2026-09-27 — App served from https://ynagak27.github.io/ynhetrack/ (no custom domain); Worker CORS allows that origin plus localhost.
+- 2026-09-27 — Added `PUT /api/days` (several dates in one transactional batch) so the morning save writes today's log and last night's drinks together; `PUT /api/days/:date` stays for single days.
+- 2026-09-27 — Tapping a selected choice (sleep hours, drinks answer, effort) again unselects it.
+- 2026-09-27 — Free-tier guard: every request stays under 50 D1 statements (7 days per save, 30 import rows per INSERT, 1200 rows per import request; the app splits bigger CSVs).
