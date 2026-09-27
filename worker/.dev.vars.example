@@ -1,0 +1,3 @@
+# Copy to worker/.dev.vars for local development (that file is gitignored).
+# Generate a long random token, e.g.: node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+API_TOKEN=replace-with-a-long-random-token

@@ -1,0 +1,15 @@
+{
+  "name": "ynhetrack-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node --test test/*.test.js",
+    "db:migrate:local": "wrangler d1 migrations apply ynhetrack --local",
+    "db:migrate:remote": "wrangler d1 migrations apply ynhetrack --remote"
+  },
+  "devDependencies": {
+    "wrangler": "4.142.0"
+  }
+}
