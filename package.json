@@ -1,0 +1,12 @@
+{
+  "name": "ynhetrack",
+  "private": true,
+  "type": "module",
+  "description": "Personal health tracker: GitHub Pages PWA + Cloudflare Worker + D1",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

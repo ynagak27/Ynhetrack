@@ -47,3 +47,13 @@ Add every decision made with the user here, newest last, with the date.
 - 2026-09-27 — Weekly exercise targets: 3 lifts, 3 walks, 2 bike sessions. No drink target, ever.
 - 2026-09-27 — "Today" is the phone's local date (Europe/London or Asia/Tokyo); the IANA timezone is stored with each entry.
 - 2026-09-27 — API protected by a secret bearer token (not Cloudflare Access) for v1.
+- 2026-09-27 — Frontend is plain HTML/CSS/JS ES modules, no framework and no build step.
+- 2026-09-27 — Dependencies approved: `wrangler` (dev-only, in `worker/`). Tests use Node's built-in `node:test` (no test dependencies). Worker is plain JavaScript.
+- 2026-09-27 — Morning-first log form: weight, sleep last night, drinks, exercise, note. The drinks section has a "Last night / Tonight" toggle (defaults to Last night before 15:00 when viewing today); drinks are stored under the evening they happened.
+- 2026-09-27 — `daily_log.drank` stores an explicit drinks answer: 1 yes, 0 no, NULL not answered (so dry days differ from unlogged days).
+- 2026-09-27 — Exercise duration presets: strength 60, walk 45, jog 30, bike 30, other 30 min; ±5 buttons; effort optional.
+- 2026-09-27 — Weight input: decimal keypad, yesterday's weight shown as a hint, ± 0.1 buttons start from it; "Skip weight today" toggle.
+- 2026-09-27 — CSV weight import skips dates that already have a weight (never overwrites) and reports the count. Accepts YYYY-MM-DD, YYYY/MM/DD and DD/MM/YYYY (MM/DD/YYYY only if the file makes that unambiguous), optional header, comma/semicolon/tab separators.
+- 2026-09-27 — Phase 1 needs a connection to save (app shell works offline; no offline queue).
+- 2026-09-27 — Worker URL and API token are entered once on the app's Settings screen and kept in the phone's localStorage.
+- 2026-09-27 — App served from https://ynagak27.github.io/ynhetrack/ (no custom domain); Worker CORS allows that origin plus localhost.
