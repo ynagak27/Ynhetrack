@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Ynhetrack</title>
+    <meta name="description" content="Personal daily log: weight, sleep, drinks and exercise." />
+    <meta name="theme-color" content="#0f766e" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Ynhetrack" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="js/app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <button class="icon-btn" id="prev-day" aria-label="Previous day">‹</button>
+      <button class="date-btn" id="date-btn" aria-label="Pick a date">
+        <span id="date-main">Today</span>
+        <span id="date-sub" class="muted"></span>
+      </button>
+      <input type="date" id="date-input" class="visually-hidden" tabindex="-1" aria-hidden="true" />
+      <button class="icon-btn" id="next-day" aria-label="Next day">›</button>
+      <button class="icon-btn" id="open-settings" aria-label="Settings and data">⚙</button>
+    </header>
+
+    <main id="log-view">
+      <form id="log-form" autocomplete="off" novalidate>
+        <section class="card" aria-labelledby="weight-h">
+          <div class="card-head">
+            <h2 id="weight-h">Weight</h2>
+            <span class="muted" id="weight-hint"></span>
+          </div>
+          <div class="weight-row">
+            <button type="button" class="step-btn" data-weight-step="-0.1" aria-label="Minus 0.1 kg">−</button>
+            <label class="weight-field">
+              <input id="weight" type="text" inputmode="decimal" enterkeyhint="done" placeholder="—" aria-label="Weight in kg" />
+              <span class="unit">kg</span>
+            </label>
+            <button type="button" class="step-btn" data-weight-step="0.1" aria-label="Plus 0.1 kg">+</button>
+          </div>
+          <label class="chip toggle-chip"><input type="checkbox" id="skip-weight" /> Skip weight today</label>
+        </section>
+
+        <section class="card" aria-labelledby="sleep-h">
+          <div class="card-head">
+            <h2 id="sleep-h">Sleep last night</h2>
+            <span class="muted" id="sleep-value">— h</span>
+          </div>
+          <div class="chip-scroll" id="sleep-chips" role="group" aria-label="Hours slept"></div>
+        </section>
+
+        <section class="card" aria-labelledby="drinks-h">
+          <div class="card-head">
+            <h2 id="drinks-h">Drinks</h2>
+            <span class="muted" id="drinks-date"></span>
+          </div>
+          <div class="segmented" role="group" aria-label="Which evening">
+            <button type="button" data-evening="previous" id="evening-previous">Last night</button>
+            <button type="button" data-evening="same" id="evening-same">Tonight</button>
+          </div>
+          <div class="yesno" role="group" aria-label="Any drinks?">
+            <button type="button" class="chip" data-drinks-answer="no">No drinks</button>
+            <button type="button" class="chip" data-drinks-answer="yes">Had drinks</button>
+          </div>
+          <div id="drink-counters" class="counters" hidden></div>
+        </section>
+
+        <section class="card" aria-labelledby="exercise-h">
+          <div class="card-head">
+            <h2 id="exercise-h">Exercise</h2>
+            <span class="muted" id="exercise-total"></span>
+          </div>
+          <div class="chip-wrap" id="exercise-add" role="group" aria-label="Add a session"></div>
+          <div id="sessions"></div>
+        </section>
+
+        <section class="card">
+          <input id="note" type="text" maxlength="200" enterkeyhint="done" placeholder="Note (optional) — e.g. ate out" aria-label="Note" />
+        </section>
+
+        <div class="savebar">
+          <p id="status" class="status" role="status" aria-live="polite"></p>
+          <button type="submit" class="primary" id="save-btn">Save</button>
+        </div>
+      </form>
+
+      <section class="recent" aria-labelledby="recent-h">
+        <h2 id="recent-h">Last 7 days</h2>
+        <ul id="recent-list"></ul>
+      </section>
+    </main>
+
+    <main id="settings-view" hidden>
+      <section class="card">
+        <div class="card-head">
+          <h2>Connection</h2>
+          <button type="button" class="link-btn" id="close-settings">Done</button>
+        </div>
+        <p class="muted small" id="setup-help">
+          Enter your Worker's address and API token (see SETUP.md). They're stored only on this phone.
+        </p>
+        <form id="settings-form" autocomplete="off">
+          <label class="field">Worker URL
+            <input id="api-url" type="url" inputmode="url" placeholder="https://ynhetrack.<you>.workers.dev" required />
+          </label>
+          <label class="field">API token
+            <input id="api-token" type="password" required />
+          </label>
+          <div class="row">
+            <button type="submit" class="primary">Save &amp; test</button>
+          </div>
+          <p class="status" id="settings-status" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Import past weights</h2>
+        <p class="muted small">CSV with two columns: date, weight_kg. Dates that already have a weight are skipped.</p>
+        <label class="file-btn">Choose CSV file
+          <input type="file" id="import-file" accept=".csv,.txt,text/csv,text/plain" />
+        </label>
+        <p class="status" id="import-status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="card">
+        <h2>Export</h2>
+        <p class="muted small">Everything you've logged, one row per day.</p>
+        <button type="button" class="secondary" id="export-btn">Download CSV</button>
+        <p class="status" id="export-status" role="status" aria-live="polite"></p>
+      </section>
+    </main>
+  </body>
+</html>
