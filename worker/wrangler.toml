@@ -1,0 +1,17 @@
+# Cloudflare Worker config for Ynhetrack. No secrets in here:
+# API_TOKEN (and later CLAUDE_API_KEY, RESEND_API_KEY) are set with `wrangler secret put`
+# and, for local dev, in the gitignored worker/.dev.vars file.
+name = "ynhetrack"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+# Comma-separated list of browser origins allowed to call the API (CORS).
+ALLOWED_ORIGINS = "https://ynagak27.github.io,http://localhost:8000,http://127.0.0.1:8000"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ynhetrack"
+# Replace with the id printed by `npx wrangler d1 create ynhetrack` (see SETUP.md).
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
