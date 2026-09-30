@@ -1,7 +1,9 @@
-// Ynhetrack phone app: one-screen daily log plus a settings/data screen.
+// Ynhetrack phone app: a morning log plus a settings/data screen.
+// "This morning" = weight and last night's sleep for the viewed date.
+// "Yesterday" = drinks, exercise and note for the day before (switchable to the same day).
 
 import { api, getConnection, setConnection } from './api.js';
-import { localDate, localTimezone, addDays, shortLabel, relativeLabel, defaultDrinksEvening } from './dates.js';
+import { localDate, localTimezone, addDays, shortLabel, relativeLabel, defaultRecapDay } from './dates.js';
 
 const DRINK_TYPES = [
   ['beer', 'Beer'],
@@ -27,12 +29,12 @@ const cache = new Map(); // date -> day object from the API
 const state = {
   today: localDate(),
   date: localDate(),
-  evening: 'previous', // 'previous' = last night, 'same' = this date's evening
+  recap: 'previous', // 'previous' = the day before the viewed date, 'same' = the viewed date
   weight: '',
   skipWeight: false,
   sleep: null,
   drinks: { answer: null, counts: {} }, // answer: null | 'no' | 'yes'
-  exercise: [], // [{kind, minutes, effort_1_5}]
+  exercise: { answer: null, sessions: {} }, // sessions: kind -> { minutes, effort_1_5 }
   note: '',
   startedAt: null, // first tap on this form, for the "took N s" readout
   loading: false,
@@ -40,8 +42,8 @@ const state = {
 
 // ---------- helpers ----------
 
-function drinksDate() {
-  return state.evening === 'previous' ? addDays(state.date, -1) : state.date;
+function recapDate() {
+  return state.recap === 'previous' ? addDays(state.date, -1) : state.date;
 }
 
 function setStatus(el, text, kind = '') {
@@ -63,10 +65,27 @@ function lastWeightBefore(date) {
   return best;
 }
 
-function drinksAnswerFromDay(day) {
+function drinksFromDay(day) {
   if (!day || day.drank == null) return { answer: null, counts: {} };
-  const counts = Object.fromEntries(day.drinks.map((d) => [d.type, d.count]));
-  return { answer: day.drank ? 'yes' : 'no', counts };
+  return { answer: day.drank ? 'yes' : 'no', counts: Object.fromEntries(day.drinks.map((d) => [d.type, d.count])) };
+}
+
+/** One entry per exercise kind; several stored sessions of the same kind are added up. */
+function exerciseFromDay(day) {
+  const sessions = {};
+  for (const e of day?.exercise ?? []) {
+    const s = (sessions[e.kind] ??= { minutes: 0, effort_1_5: null });
+    s.minutes += e.minutes;
+    s.effort_1_5 ??= e.effort_1_5;
+  }
+  let answer = null;
+  if (day?.exercised === 1 || Object.keys(sessions).length) answer = 'yes';
+  else if (day?.exercised === 0) answer = 'no';
+  return { answer, sessions };
+}
+
+function exerciseMinutes() {
+  return Object.values(state.exercise.sessions).reduce((sum, s) => sum + s.minutes, 0);
 }
 
 function button(className, text, attrs = {}) {
@@ -86,25 +105,27 @@ async function fetchRange(from, to) {
   for (const day of days) cache.set(day.date, day);
 }
 
+function fillRecapFromCache() {
+  const day = cache.get(recapDate());
+  state.drinks = drinksFromDay(day);
+  state.exercise = exerciseFromDay(day);
+  state.note = day?.note ?? '';
+}
+
 function fillFormFromCache() {
   const day = cache.get(state.date);
   state.weight = day?.weight_kg != null ? day.weight_kg.toFixed(1) : '';
-  state.skipWeight = Boolean(day && day.weight_kg == null && day.timezone && hasLogData(day));
+  // A saved morning with sleep but no weight means the weight was skipped.
+  state.skipWeight = Boolean(day && day.weight_kg == null && day.sleep_hours != null);
   state.sleep = day?.sleep_hours ?? null;
-  state.note = day?.note ?? '';
-  state.exercise = (day?.exercise ?? []).map((e) => ({ kind: e.kind, minutes: e.minutes, effort_1_5: e.effort_1_5 }));
-  state.drinks = drinksAnswerFromDay(cache.get(drinksDate()));
+  fillRecapFromCache();
   state.startedAt = null;
-}
-
-function hasLogData(day) {
-  return day.sleep_hours != null || day.note != null || day.exercise.length > 0;
 }
 
 async function loadDate(date) {
   state.date = date;
   state.today = localDate();
-  state.evening = defaultDrinksEvening(date, state.today);
+  state.recap = defaultRecapDay(date, state.today);
   state.loading = true;
   render();
   setStatus($('#status'), 'Loading…');
@@ -152,18 +173,21 @@ function renderSleep() {
   $('#sleep-value').textContent = state.sleep == null ? '— h' : `${state.sleep} h`;
 }
 
-function renderDrinks() {
-  const prevLabel = state.date === state.today ? 'Last night' : 'Night before';
-  const sameLabel = state.date === state.today ? 'Tonight' : 'That evening';
-  $('#evening-previous').textContent = prevLabel;
-  $('#evening-same').textContent = sameLabel;
-  $('#evening-previous').setAttribute('aria-pressed', String(state.evening === 'previous'));
-  $('#evening-same').setAttribute('aria-pressed', String(state.evening === 'same'));
-  $('#drinks-date').textContent = `evening of ${shortLabel(drinksDate())}`;
-  document.querySelectorAll('[data-drinks-answer]').forEach((b) => {
-    b.setAttribute('aria-pressed', String(b.dataset.drinksAnswer === state.drinks.answer));
-  });
+function renderRecapHead() {
+  const isToday = state.date === state.today;
+  $('#recap-previous').textContent = isToday ? 'Yesterday' : 'Day before';
+  $('#recap-same').textContent = isToday ? 'Today' : 'That day';
+  $('#recap-previous').setAttribute('aria-pressed', String(state.recap === 'previous'));
+  $('#recap-same').setAttribute('aria-pressed', String(state.recap === 'same'));
+  $('#recap-title').textContent = shortLabel(recapDate());
+}
 
+function answerButtons(attr, answer) {
+  document.querySelectorAll(`[${attr}]`).forEach((b) => b.setAttribute('aria-pressed', String(b.getAttribute(attr) === answer)));
+}
+
+function renderDrinks() {
+  answerButtons('data-drinks-answer', state.drinks.answer);
   const box = $('#drink-counters');
   box.hidden = state.drinks.answer !== 'yes';
   if (!box.childElementCount) {
@@ -184,54 +208,62 @@ function renderDrinks() {
     }
   }
   for (const [type] of DRINK_TYPES) $(`#drink-${type}`).textContent = state.drinks.counts[type] ?? 0;
+  const total = Object.values(state.drinks.counts).reduce((a, b) => a + b, 0);
+  $('#drinks-total').textContent = state.drinks.answer === 'yes' && total ? `${total} total` : '';
 }
 
 function renderExercise() {
-  const add = $('#exercise-add');
-  if (!add.childElementCount) {
-    for (const [kind, { label }] of Object.entries(EXERCISE)) add.append(button('chip', `+ ${label}`, { 'data-add-session': kind }));
-  }
-  const list = $('#sessions');
-  list.replaceChildren();
-  state.exercise.forEach((s, i) => {
-    const card = document.createElement('div');
-    card.className = 'session';
-    const title = document.createElement('div');
-    title.className = 'session-head';
-    const name = document.createElement('strong');
-    name.textContent = EXERCISE[s.kind].label;
-    title.append(name, button('link-btn', 'Remove', { 'data-remove': i }));
-
-    const mins = document.createElement('div');
-    mins.className = 'counter';
-    const out = document.createElement('output');
-    out.textContent = `${s.minutes} min`;
-    mins.append(
-      button('step-btn small', '−5', { 'data-minutes': i, 'data-delta': '-5', 'aria-label': 'Minus 5 minutes' }),
-      out,
-      button('step-btn small', '+5', { 'data-minutes': i, 'data-delta': '5', 'aria-label': 'Plus 5 minutes' }),
-    );
-
-    const effort = document.createElement('div');
-    effort.className = 'effort';
-    const lab = document.createElement('span');
-    lab.className = 'muted small';
-    lab.textContent = 'Effort';
-    effort.append(lab);
-    for (let e = 1; e <= 5; e++) {
-      effort.append(button('chip small', String(e), { 'data-effort': i, 'data-value': e, 'aria-pressed': String(s.effort_1_5 === e) }));
+  answerButtons('data-exercise-answer', state.exercise.answer);
+  const box = $('#exercise-rows');
+  box.hidden = state.exercise.answer !== 'yes';
+  if (!box.childElementCount) {
+    for (const [kind, { label }] of Object.entries(EXERCISE)) {
+      const wrap = document.createElement('div');
+      wrap.className = 'exercise-item';
+      const row = document.createElement('div');
+      row.className = 'counter';
+      const name = document.createElement('span');
+      name.textContent = label;
+      const value = document.createElement('output');
+      value.id = `mins-${kind}`;
+      row.append(
+        name,
+        button('step-btn small', '−', { 'data-minutes': kind, 'data-delta': '-5', 'aria-label': `5 minutes less ${label}` }),
+        value,
+        button('step-btn small', '+', { 'data-minutes': kind, 'data-delta': '5', 'aria-label': `5 minutes more ${label}` }),
+      );
+      const effort = document.createElement('div');
+      effort.className = 'effort';
+      effort.id = `effort-${kind}`;
+      const lab = document.createElement('span');
+      lab.className = 'muted small';
+      lab.textContent = 'Effort';
+      effort.append(lab);
+      for (let e = 1; e <= 5; e++) effort.append(button('chip small', String(e), { 'data-effort': kind, 'data-value': e }));
+      wrap.append(row, effort);
+      box.append(wrap);
     }
-    card.append(title, mins, effort);
-    list.append(card);
-  });
-  const total = state.exercise.reduce((sum, s) => sum + s.minutes, 0);
-  $('#exercise-total').textContent = state.exercise.length ? `${total} min` : 'rest day';
+  }
+  for (const kind of Object.keys(EXERCISE)) {
+    const s = state.exercise.sessions[kind];
+    const done = Boolean(s && s.minutes > 0);
+    $(`#mins-${kind}`).textContent = done ? `${s.minutes}m` : '0';
+    const effort = $(`#effort-${kind}`);
+    effort.hidden = !done;
+    for (const b of effort.querySelectorAll('[data-value]')) {
+      b.setAttribute('aria-pressed', String(done && s.effort_1_5 === Number(b.dataset.value)));
+    }
+  }
+  const mins = exerciseMinutes();
+  $('#exercise-total').textContent =
+    state.exercise.answer === 'yes' && mins ? `${mins} min` : state.exercise.answer === 'no' ? 'rest day' : '';
 }
 
 function render() {
   renderHeader();
   renderWeight();
   renderSleep();
+  renderRecapHead();
   renderDrinks();
   renderExercise();
   if (document.activeElement !== $('#note')) $('#note').value = state.note;
@@ -245,6 +277,7 @@ function summarise(day) {
   if (day.drank === 1) bits.push(`${day.drinks.reduce((s, d) => s + d.count, 0)} drinks`);
   if (day.drank === 0) bits.push('no drinks');
   for (const e of day.exercise) bits.push(`${EXERCISE[e.kind].label.toLowerCase()} ${e.minutes}m`);
+  if (day.exercised === 0) bits.push('rest day');
   return bits.join(' · ') || 'not logged';
 }
 
@@ -279,26 +312,40 @@ function buildSave() {
     if (w < 30 || w > 300) return { error: 'Weight should be between 30 and 300 kg.' };
     weight = Math.round(w * 10) / 10;
   }
-  const today = {
-    date: state.date,
-    log: { weight_kg: weight, sleep_hours: state.sleep, note: state.note.trim() || null },
-    exercise: state.exercise,
-  };
-  const days = [today];
+  const morning = { date: state.date, log: { weight_kg: weight, sleep_hours: state.sleep } };
 
-  // Send drinks when answered now, or when clearing a previously stored answer.
-  const dDate = drinksDate();
-  const stored = cache.get(dDate)?.drank ?? null;
-  if (state.drinks.answer !== null || stored !== null) {
+  const rDate = recapDate();
+  const stored = cache.get(rDate);
+  const recap = rDate === state.date ? morning : { date: rDate };
+
+  const note = state.note.trim();
+  if (note !== (stored?.note ?? '')) recap.log = { ...recap.log, note: note || null };
+
+  // Send an answer when given now, or when clearing one that was stored before.
+  if (state.drinks.answer !== null || (stored?.drank ?? null) !== null) {
     let drinks = null;
     if (state.drinks.answer === 'no') drinks = [];
     if (state.drinks.answer === 'yes') {
       drinks = DRINK_TYPES.map(([type]) => ({ type, count: state.drinks.counts[type] ?? 0 })).filter((d) => d.count > 0);
       if (!drinks.length) return { error: 'Add at least one drink, or choose “No drinks”.' };
     }
-    if (dDate === state.date) today.drinks = drinks;
-    else days.push({ date: dDate, drinks });
+    recap.drinks = drinks;
   }
+  const storedExercise = exerciseFromDay(stored).answer;
+  if (state.exercise.answer !== null || storedExercise !== null) {
+    let exercise = null;
+    if (state.exercise.answer === 'no') exercise = [];
+    if (state.exercise.answer === 'yes') {
+      exercise = Object.entries(state.exercise.sessions)
+        .filter(([, s]) => s.minutes > 0)
+        .map(([kind, s]) => ({ kind, minutes: s.minutes, effort_1_5: s.effort_1_5 }));
+      if (!exercise.length) return { error: 'Add minutes to at least one exercise, or choose “No exercise”.' };
+    }
+    recap.exercise = exercise;
+  }
+
+  const days = [morning];
+  if (recap !== morning && Object.keys(recap).length > 1) days.push(recap);
   return { days };
 }
 
@@ -340,9 +387,9 @@ function onLogClick(e) {
     touch();
     const h = Number(d.sleep);
     state.sleep = state.sleep === h ? null : h;
-  } else if (d.evening) {
-    state.evening = d.evening;
-    state.drinks = drinksAnswerFromDay(cache.get(drinksDate()));
+  } else if (d.recap) {
+    state.recap = d.recap;
+    fillRecapFromCache();
   } else if (d.drinksAnswer) {
     touch();
     state.drinks.answer = state.drinks.answer === d.drinksAnswer ? null : d.drinksAnswer;
@@ -350,20 +397,21 @@ function onLogClick(e) {
     touch();
     const c = (state.drinks.counts[d.drink] ?? 0) + Number(d.delta);
     state.drinks.counts[d.drink] = Math.max(0, Math.min(50, c));
-  } else if (d.addSession) {
+  } else if (d.exerciseAnswer) {
     touch();
-    if (state.exercise.length < 10) state.exercise.push({ kind: d.addSession, minutes: EXERCISE[d.addSession].minutes, effort_1_5: null });
-  } else if (d.remove !== undefined) {
-    state.exercise.splice(Number(d.remove), 1);
-  } else if (d.minutes !== undefined) {
+    state.exercise.answer = state.exercise.answer === d.exerciseAnswer ? null : d.exerciseAnswer;
+  } else if (d.minutes) {
     touch();
-    const s = state.exercise[Number(d.minutes)];
-    s.minutes = Math.max(5, Math.min(600, s.minutes + Number(d.delta)));
-  } else if (d.effort !== undefined) {
+    const s = (state.exercise.sessions[d.minutes] ??= { minutes: 0, effort_1_5: null });
+    const delta = Number(d.delta);
+    if (delta > 0) s.minutes = s.minutes === 0 ? EXERCISE[d.minutes].minutes : Math.min(600, s.minutes + delta);
+    else s.minutes = s.minutes + delta < 5 ? 0 : s.minutes + delta;
+    if (s.minutes === 0) s.effort_1_5 = null;
+  } else if (d.effort) {
     touch();
-    const s = state.exercise[Number(d.effort)];
+    const s = state.exercise.sessions[d.effort];
     const v = Number(d.value);
-    s.effort_1_5 = s.effort_1_5 === v ? null : v;
+    if (s) s.effort_1_5 = s.effort_1_5 === v ? null : v;
   } else {
     return;
   }

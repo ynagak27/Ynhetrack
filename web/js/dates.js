@@ -41,10 +41,11 @@ export function relativeLabel(date, today) {
 }
 
 /**
- * Which evening the drinks section starts on. When logging today before 15:00 it is
- * last night; later in the day, or when back-filling a past date, it is that day's evening.
+ * Which day the "Yesterday" section (drinks, exercise, note) starts on. The app is a
+ * morning log, so it covers the day before — except when opened today after 15:00,
+ * when it switches to today.
  */
-export function defaultDrinksEvening(viewDate, today, now = new Date()) {
-  if (viewDate === today && now.getHours() < 15) return 'previous';
-  return 'same';
+export function defaultRecapDay(viewDate, today, now = new Date()) {
+  if (viewDate === today && now.getHours() >= 15) return 'same';
+  return 'previous';
 }

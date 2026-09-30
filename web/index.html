@@ -29,9 +29,11 @@
 
     <main id="log-view">
       <form id="log-form" autocomplete="off" novalidate>
+        <h2 class="section-label">This morning</h2>
+
         <section class="card" aria-labelledby="weight-h">
           <div class="card-head">
-            <h2 id="weight-h">Weight</h2>
+            <h3 id="weight-h">Weight</h3>
             <span class="muted" id="weight-hint"></span>
           </div>
           <div class="weight-row">
@@ -47,20 +49,24 @@
 
         <section class="card" aria-labelledby="sleep-h">
           <div class="card-head">
-            <h2 id="sleep-h">Sleep last night</h2>
+            <h3 id="sleep-h">Sleep last night</h3>
             <span class="muted" id="sleep-value">— h</span>
           </div>
           <div class="chip-scroll" id="sleep-chips" role="group" aria-label="Hours slept"></div>
         </section>
 
+        <div class="section-head">
+          <h2 class="section-label" id="recap-title">Yesterday</h2>
+          <div class="segmented small" role="group" aria-label="Which day">
+            <button type="button" data-recap="previous" id="recap-previous">Yesterday</button>
+            <button type="button" data-recap="same" id="recap-same">Today</button>
+          </div>
+        </div>
+
         <section class="card" aria-labelledby="drinks-h">
           <div class="card-head">
-            <h2 id="drinks-h">Drinks</h2>
-            <span class="muted" id="drinks-date"></span>
-          </div>
-          <div class="segmented" role="group" aria-label="Which evening">
-            <button type="button" data-evening="previous" id="evening-previous">Last night</button>
-            <button type="button" data-evening="same" id="evening-same">Tonight</button>
+            <h3 id="drinks-h">Drinks</h3>
+            <span class="muted" id="drinks-total"></span>
           </div>
           <div class="yesno" role="group" aria-label="Any drinks?">
             <button type="button" class="chip" data-drinks-answer="no">No drinks</button>
@@ -71,11 +77,14 @@
 
         <section class="card" aria-labelledby="exercise-h">
           <div class="card-head">
-            <h2 id="exercise-h">Exercise</h2>
+            <h3 id="exercise-h">Exercise</h3>
             <span class="muted" id="exercise-total"></span>
           </div>
-          <div class="chip-wrap" id="exercise-add" role="group" aria-label="Add a session"></div>
-          <div id="sessions"></div>
+          <div class="yesno" role="group" aria-label="Any exercise?">
+            <button type="button" class="chip" data-exercise-answer="no">No exercise</button>
+            <button type="button" class="chip" data-exercise-answer="yes">Exercised</button>
+          </div>
+          <div id="exercise-rows" class="counters" hidden></div>
         </section>
 
         <section class="card">
