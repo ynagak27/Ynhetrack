@@ -160,6 +160,7 @@ export const EXPORT_COLUMNS = [
   'drank',
   ...DRINK_TYPES.map((t) => `drinks_${t}`),
   'drinks_total',
+  'exercised',
   'exercise',
   'exercise_minutes',
   'note',
@@ -168,7 +169,7 @@ export const EXPORT_COLUMNS = [
 
 /**
  * One row per date. `exercise` lists sessions as kind:minutes[:effort] joined by ';'
- * (e.g. "walk:45:3;strength_a:60"). `drank` is yes / no / blank (not answered).
+ * (e.g. "walk:45:3;strength_a:60"). `drank` and `exercised` are yes / no / blank (not answered).
  */
 export function buildExportCsv(days) {
   const out = [EXPORT_COLUMNS.join(',')];
@@ -179,14 +180,15 @@ export function buildExportCsv(days) {
       .map((e) => [e.kind, e.minutes, e.effort_1_5].filter((v) => v !== null && v !== undefined).join(':'))
       .join(';');
     const minutes = d.exercise.reduce((s, e) => s + e.minutes, 0);
-    const drank = d.drank === 1 ? 'yes' : d.drank === 0 ? 'no' : '';
+    const yesNo = (v) => (v === 1 ? 'yes' : v === 0 ? 'no' : '');
     const row = [
       d.date,
       d.weight_kg,
       d.sleep_hours,
-      drank,
+      yesNo(d.drank),
       ...DRINK_TYPES.map((t) => byType[t] ?? 0),
       total,
+      yesNo(d.exercised),
       sessions,
       minutes,
       d.note,

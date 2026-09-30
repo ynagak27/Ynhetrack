@@ -13,9 +13,9 @@ test('a full day saves log (with drank), drinks and exercise', () => {
     exercise: [{ kind: 'walk', minutes: 45, effort_1_5: null }],
   });
   assert.equal(stmts.length, 5);
-  assert.match(stmts[0].sql, /^INSERT INTO daily_log \(date, weight_kg, sleep_hours, note, drank, timezone, updated_at\)/);
+  assert.match(stmts[0].sql, /^INSERT INTO daily_log \(date, weight_kg, sleep_hours, note, drank, exercised, timezone, updated_at\)/);
   assert.match(stmts[0].sql, /timezone = excluded.timezone/);
-  assert.deepEqual(stmts[0].params, ['2026-09-27', 87.2, 7.5, null, 1, 'Europe/London']);
+  assert.deepEqual(stmts[0].params, ['2026-09-27', 87.2, 7.5, null, 1, 1, 'Europe/London']);
   assert.equal(stmts[1].sql, 'DELETE FROM drinks WHERE date = ?');
   assert.deepEqual(stmts[2].params, ['2026-09-27', 'beer', 2, 'Europe/London']);
   assert.equal(stmts[3].sql, 'DELETE FROM exercise WHERE date = ?');
@@ -40,9 +40,29 @@ test('clearing the drinks answer updates only existing rows', () => {
   assert.equal(stmts.length, 2);
 });
 
-test('empty exercise list clears sessions; absent sections are untouched', () => {
+test('"no exercise" records exercised = 0 and clears sessions; absent sections are untouched', () => {
   const stmts = buildSaveStatements({ date: '2026-09-27', timezone: 'Europe/London', exercise: [] });
-  assert.deepEqual(stmts, [{ sql: 'DELETE FROM exercise WHERE date = ?', params: ['2026-09-27'] }]);
+  assert.equal(stmts.length, 2);
+  assert.match(stmts[0].sql, /INSERT INTO daily_log \(date, exercised, timezone, updated_at\)/);
+  assert.doesNotMatch(stmts[0].sql, /drank|weight_kg/);
+  assert.deepEqual(stmts[0].params, ['2026-09-27', 0, 'Europe/London']);
+  assert.deepEqual(stmts[1], { sql: 'DELETE FROM exercise WHERE date = ?', params: ['2026-09-27'] });
+});
+
+test('clearing both answers updates only existing rows', () => {
+  const stmts = buildSaveStatements({ date: '2026-09-26', timezone: 'Asia/Tokyo', drinks: null, exercise: null });
+  assert.match(stmts[0].sql, /^UPDATE daily_log SET drank = NULL, exercised = NULL/);
+  assert.deepEqual(
+    stmts.slice(1).map((s) => s.sql),
+    ['DELETE FROM drinks WHERE date = ?', 'DELETE FROM exercise WHERE date = ?'],
+  );
+});
+
+test('a note-only log writes just the note', () => {
+  const [stmt] = buildSaveStatements({ date: '2026-09-29', timezone: 'Europe/London', log: { note: 'ate out' } });
+  assert.match(stmt.sql, /^INSERT INTO daily_log \(date, note, timezone, updated_at\)/);
+  assert.match(stmt.sql, /DO UPDATE SET note = excluded.note, timezone/);
+  assert.deepEqual(stmt.params, ['2026-09-29', 'ate out', 'Europe/London']);
 });
 
 test('import statements chunk rows to stay under the D1 parameter limit and never overwrite weights', () => {
@@ -60,7 +80,7 @@ test('import statements chunk rows to stay under the D1 parameter limit and neve
 
 test('mergeDays groups rows by date, sorted, with empty defaults', () => {
   const days = mergeDays(
-    [{ date: '2026-09-27', weight_kg: 87.2, sleep_hours: 7, note: null, drank: 0, timezone: 'Europe/London' }],
+    [{ date: '2026-09-27', weight_kg: 87.2, sleep_hours: 7, note: null, drank: 0, exercised: 1, timezone: 'Europe/London' }],
     [{ date: '2026-09-26', type: 'beer', count: 2, timezone: 'Europe/London' }],
     [{ id: 4, date: '2026-09-27', kind: 'walk', minutes: 45, effort_1_5: 3, timezone: 'Europe/London' }],
   );
@@ -71,6 +91,7 @@ test('mergeDays groups rows by date, sorted, with empty defaults', () => {
       sleep_hours: null,
       note: null,
       drank: null,
+      exercised: null,
       timezone: 'Europe/London',
       drinks: [{ type: 'beer', count: 2 }],
       exercise: [],
@@ -81,6 +102,7 @@ test('mergeDays groups rows by date, sorted, with empty defaults', () => {
       sleep_hours: 7,
       note: null,
       drank: 0,
+      exercised: 1,
       timezone: 'Europe/London',
       drinks: [],
       exercise: [{ id: 4, kind: 'walk', minutes: 45, effort_1_5: 3 }],

@@ -173,11 +173,17 @@ You can run the import again safely. Rows already imported are simply skipped.
 
 ## 10. Daily use
 
-- **Morning:** weight → tap sleep hours → drinks for **last night** (defaults to *Last night* before
-  15:00) → add any exercise → **Save**. The status line shows how long the entry took. The goal is under
-  30 seconds.
-- **Later the same day:** open the app again, add the session, **Save**. Only what you change is updated.
-- **Backfill:** use **‹ ›**, tap the date to pick one, or tap a row in **Last 7 days**.
+The app is a **morning** log. Open it after you weigh yourself:
+
+- **This morning:** weight → tap your hours of sleep.
+- **Yesterday:** drinks (No drinks / Had drinks → counts), exercise (No exercise / Exercised → tap **+** on
+  what you did; the first tap fills in the usual length, e.g. walk 45 min; effort 1–5 is optional), and an
+  optional note such as "ate out".
+- **Save.** The status line shows how long the entry took. The goal is under 30 seconds.
+- **Opened later in the day?** After 15:00 the second part switches to *Today*; use the Yesterday / Today
+  toggle to change it any time.
+- **Backfill:** use **‹ ›**, tap the date to pick one, or tap a row in **Last 7 days**. The page for a date
+  shows that morning plus the day before.
 - **Export:** **⚙** → **Download CSV**, any time.
 
 ---

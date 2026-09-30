@@ -3,7 +3,7 @@
 // Shell files are fetched network-first, so updates appear on the next open;
 // bump VERSION if a file is renamed or removed so old caches are cleared.
 
-const VERSION = 'ynhetrack-v1';
+const VERSION = 'ynhetrack-v2';
 const SHELL = [
   './',
   'index.html',

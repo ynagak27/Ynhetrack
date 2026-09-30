@@ -28,7 +28,8 @@ Update these status lines at the end of every session.
 
 ## Repo map
 
-- `web/` — phone PWA, no build step. `js/app.js` (UI + state), `js/api.js` (fetch + localStorage connection),
+- `web/` — phone PWA, no build step. `js/app.js` (UI + state; morning layout: "This morning" = weight + sleep
+  for the viewed date, "Yesterday" = drinks + exercise + note for the day before, switchable to the same day), `js/api.js` (fetch + localStorage connection),
   `js/dates.js` (local-date helpers, tested), `sw.js` (network-first shell cache), `manifest.webmanifest`, `icons/`.
 - `worker/src/` — `index.js` (router), `http.js` (CORS, bearer auth), `validate.js`, `days.js` (SQL builders,
   row merging), `csv.js` (import parser, export), `dates.js`. Pure modules are kept free of D1 so they're testable.
@@ -44,9 +45,10 @@ All routes except `GET /api/health` need `Authorization: Bearer <API_TOKEN>`.
 `GET /api/days?from&to` (≤ 400 days) · `GET /api/days/:date` · `PUT /api/days` (`{timezone, days:[…]}`, ≤ 7 days,
 one D1 batch) · `PUT /api/days/:date` · `POST /api/import/weights?tz=` (CSV body, ≤ 1200 rows) ·
 `GET /api/export.csv` · `GET /api/settings`.
-A day update has optional sections `log` {weight_kg, sleep_hours, note}, `drinks` (null = unanswered,
-[] = none, [{type,count}]) and `exercise` ([{kind, minutes, effort_1_5}]); a section that is sent replaces
-what's stored for that date, and a section left out is untouched.
+A day update has optional sections `log` {weight_kg, sleep_hours, note} (only the fields sent are written),
+`drinks` (null = unanswered, [] = none, [{type,count}]) and `exercise` (null = unanswered, [] = no exercise,
+[{kind, minutes, effort_1_5}]); drinks/exercise also set `daily_log.drank` / `daily_log.exercised`. A section
+that is sent replaces what's stored for that date; a section left out is untouched.
 
 ## Rules for working on this repo
 
@@ -71,7 +73,7 @@ Add every decision made with the user here, newest last, with the date.
 - 2026-09-27 — API protected by a secret bearer token (not Cloudflare Access) for v1.
 - 2026-09-27 — Frontend is plain HTML/CSS/JS ES modules, no framework and no build step.
 - 2026-09-27 — Dependencies approved: `wrangler` (dev-only, in `worker/`). Tests use Node's built-in `node:test` (no test dependencies). Worker is plain JavaScript.
-- 2026-09-27 — Morning-first log form: weight, sleep last night, drinks, exercise, note. The drinks section has a "Last night / Tonight" toggle (defaults to Last night before 15:00 when viewing today); drinks are stored under the evening they happened.
+- 2026-09-27 — Morning-first log form: weight, sleep last night, drinks, exercise, note. The drinks section has a "Last night / Tonight" toggle (defaults to Last night before 15:00 when viewing today); drinks are stored under the evening they happened. *(Superseded 2026-09-30, see below.)*
 - 2026-09-27 — `daily_log.drank` stores an explicit drinks answer: 1 yes, 0 no, NULL not answered (so dry days differ from unlogged days).
 - 2026-09-27 — Exercise duration presets: strength 60, walk 45, jog 30, bike 30, other 30 min; ±5 buttons; effort optional.
 - 2026-09-27 — Weight input: decimal keypad, yesterday's weight shown as a hint, ± 0.1 buttons start from it; "Skip weight today" toggle.
@@ -82,3 +84,7 @@ Add every decision made with the user here, newest last, with the date.
 - 2026-09-27 — Added `PUT /api/days` (several dates in one transactional batch) so the morning save writes today's log and last night's drinks together; `PUT /api/days/:date` stays for single days.
 - 2026-09-27 — Tapping a selected choice (sleep hours, drinks answer, effort) again unselects it.
 - 2026-09-27 — Free-tier guard: every request stays under 50 D1 statements (7 days per save, 30 import rows per INSERT, 1200 rows per import request; the app splits bigger CSVs).
+- 2026-09-30 — The app is only opened in the morning, so the log screen has two parts: **This morning** (weight, sleep last night → the viewed date) and **Yesterday** (drinks, exercise, note → the day before). One Yesterday/Today toggle switches the second part; it defaults to Yesterday, except today after 15:00.
+- 2026-09-30 — Exercise uses the same format as drinks: "No exercise / Exercised", then one row per kind with − minutes + (first + jumps to the preset; below 5 min = not done). Optional effort 1–5 is kept and shows under each kind that has minutes. One entry per kind per day.
+- 2026-09-30 — `daily_log.exercised` (migration 0002) stores the exercise answer like `drank`: 1 / 0 (rest day) / NULL (not answered). The note belongs to the "Yesterday" day.
+- 2026-09-30 — `log` updates are partial (only fields sent are written) so the morning weight and yesterday's note can be saved to different dates without wiping each other.

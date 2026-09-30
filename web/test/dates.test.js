@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { localDate, addDays, shortLabel, relativeLabel, defaultDrinksEvening } from '../js/dates.js';
+import { localDate, addDays, shortLabel, relativeLabel, defaultRecapDay } from '../js/dates.js';
 
 test('localDate uses the local calendar date', () => {
   assert.equal(localDate(new Date(2026, 8, 27, 0, 5)), '2026-09-27');
@@ -20,10 +20,11 @@ test('labels', () => {
   assert.equal(relativeLabel('2026-09-20', '2026-09-27'), 'Sun 20 Sep');
 });
 
-test('drinks default to last night only for this morning', () => {
+test('the recap section covers the day before, except today after 15:00', () => {
   const today = '2026-09-27';
-  assert.equal(defaultDrinksEvening(today, today, new Date(2026, 8, 27, 7, 30)), 'previous');
-  assert.equal(defaultDrinksEvening(today, today, new Date(2026, 8, 27, 14, 59)), 'previous');
-  assert.equal(defaultDrinksEvening(today, today, new Date(2026, 8, 27, 15, 0)), 'same');
-  assert.equal(defaultDrinksEvening('2026-09-25', today, new Date(2026, 8, 27, 7, 30)), 'same');
+  assert.equal(defaultRecapDay(today, today, new Date(2026, 8, 27, 7, 30)), 'previous');
+  assert.equal(defaultRecapDay(today, today, new Date(2026, 8, 27, 14, 59)), 'previous');
+  assert.equal(defaultRecapDay(today, today, new Date(2026, 8, 27, 15, 0)), 'same');
+  // a past date is treated as that morning's entry, so it also recaps the day before
+  assert.equal(defaultRecapDay('2026-09-25', today, new Date(2026, 8, 27, 20, 0)), 'previous');
 });
