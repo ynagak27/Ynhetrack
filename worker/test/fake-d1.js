@@ -1,7 +1,7 @@
 // Minimal in-memory stand-in for Cloudflare D1, built on Node's built-in node:sqlite.
 // Supports the subset the Worker uses: prepare().bind().all()/run()/first() and batch().
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 
 class Statement {
@@ -34,7 +34,10 @@ class Statement {
 
 export function createFakeD1() {
   const db = new DatabaseSync(':memory:');
-  db.exec(readFileSync(new URL('../migrations/0001_init.sql', import.meta.url), 'utf8'));
+  const dir = new URL('../migrations/', import.meta.url);
+  for (const file of readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()) {
+    db.exec(readFileSync(new URL(file, dir), 'utf8'));
+  }
   return {
     raw: db,
     prepare: (sql) => new Statement(db, sql),

@@ -84,6 +84,7 @@ test('buildExportCsv writes one row per day with drinks by type and encoded sess
       sleep_hours: 7.5,
       note: 'ate out, "big" meal',
       drank: 1,
+      exercised: 1,
       timezone: 'Europe/London',
       drinks: [
         { type: 'beer', count: 2 },
@@ -100,6 +101,7 @@ test('buildExportCsv writes one row per day with drinks by type and encoded sess
       sleep_hours: null,
       note: null,
       drank: null,
+      exercised: 0,
       timezone: 'Asia/Tokyo',
       drinks: [],
       exercise: [],
@@ -108,9 +110,9 @@ test('buildExportCsv writes one row per day with drinks by type and encoded sess
   const lines = csv.split('\r\n');
   assert.equal(
     lines[0],
-    'date,weight_kg,sleep_hours,drank,drinks_beer,drinks_wine,drinks_sake,drinks_spirits,drinks_other,drinks_total,exercise,exercise_minutes,note,timezone',
+    'date,weight_kg,sleep_hours,drank,drinks_beer,drinks_wine,drinks_sake,drinks_spirits,drinks_other,drinks_total,exercised,exercise,exercise_minutes,note,timezone',
   );
-  assert.equal(lines[1], '2026-09-26,87.2,7.5,yes,2,1,0,0,0,3,walk:45:3;strength_a:60,105,"ate out, ""big"" meal",Europe/London');
-  assert.equal(lines[2], '2026-09-27,,,,0,0,0,0,0,0,,0,,Asia/Tokyo');
+  assert.equal(lines[1], '2026-09-26,87.2,7.5,yes,2,1,0,0,0,3,yes,walk:45:3;strength_a:60,105,"ate out, ""big"" meal",Europe/London');
+  assert.equal(lines[2], '2026-09-27,,,,0,0,0,0,0,0,no,,0,,Asia/Tokyo');
   assert.equal(lines[3], '');
 });

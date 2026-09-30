@@ -44,22 +44,30 @@ function integer(value, name, min, max) {
   return value;
 }
 
-export function validateLog(log) {
-  if (log === null || typeof log !== 'object' || Array.isArray(log)) {
-    throw new ValidationError('log must be an object');
-  }
-  let note = log.note ?? null;
+function validateNote(value) {
+  let note = value ?? null;
   if (note !== null) {
     if (typeof note !== 'string') throw new ValidationError('note must be text');
     note = note.replace(/\s+/g, ' ').trim();
     if (note.length > NOTE_MAX) throw new ValidationError(`note must be at most ${NOTE_MAX} characters`);
     if (note === '') note = null;
   }
-  return {
-    weight_kg: optionalNumber(log.weight_kg, 'weight_kg', 30, 300),
-    sleep_hours: optionalNumber(log.sleep_hours, 'sleep_hours', 0, 24),
-    note,
-  };
+  return note;
+}
+
+/**
+ * Log fields for one day. Only the fields that are present are returned (and saved);
+ * fields left out keep their stored value. Present-but-empty values clear the field.
+ */
+export function validateLog(log) {
+  if (log === null || typeof log !== 'object' || Array.isArray(log)) {
+    throw new ValidationError('log must be an object');
+  }
+  const out = {};
+  if ('weight_kg' in log) out.weight_kg = optionalNumber(log.weight_kg, 'weight_kg', 30, 300);
+  if ('sleep_hours' in log) out.sleep_hours = optionalNumber(log.sleep_hours, 'sleep_hours', 0, 24);
+  if ('note' in log) out.note = validateNote(log.note);
+  return out;
 }
 
 /**
@@ -86,8 +94,10 @@ export function validateDrinks(drinks) {
   return out;
 }
 
+/** Exercise section: null = "not answered", [] = "no exercise", [{kind, minutes, effort_1_5}] = sessions. */
 export function validateExercise(sessions) {
-  if (!Array.isArray(sessions)) throw new ValidationError('exercise must be a list');
+  if (sessions === null) return null;
+  if (!Array.isArray(sessions)) throw new ValidationError('exercise must be a list or null');
   if (sessions.length > MAX_SESSIONS_PER_DAY) {
     throw new ValidationError(`at most ${MAX_SESSIONS_PER_DAY} exercise sessions per day`);
   }

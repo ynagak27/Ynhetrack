@@ -61,6 +61,7 @@ test('an unlogged day comes back empty', async () => {
     sleep_hours: null,
     note: null,
     drank: null,
+    exercised: null,
     timezone: null,
     drinks: [],
     exercise: [],
@@ -126,6 +127,40 @@ test('morning save: today plus last night\'s drinks in one request, then edit', 
   assert.deepEqual(sat2.drinks, []);
 });
 
+test('morning layout: this morning\'s weight and sleep, yesterday\'s drinks, exercise and note', async () => {
+  // Yesterday's note already exists from an earlier save; today's note must survive a weight-only update.
+  await call('PUT', '/api/days/2026-09-30', { body: { timezone: 'Europe/London', log: { note: 'keep me' } } });
+  const res = await call('PUT', '/api/days', {
+    body: {
+      timezone: 'Europe/London',
+      days: [
+        { date: '2026-09-30', log: { weight_kg: 86.8, sleep_hours: 7 } },
+        {
+          date: '2026-09-29',
+          log: { note: 'ate out' },
+          drinks: [],
+          exercise: [{ kind: 'walk', minutes: 45, effort_1_5: 3 }],
+        },
+      ],
+    },
+  });
+  assert.equal(res.status, 200);
+  const { days } = await (await call('GET', '/api/days?from=2026-09-29&to=2026-09-30')).json();
+  const [tue, wed] = days;
+  assert.deepEqual(
+    [tue.note, tue.drank, tue.exercised, tue.weight_kg, tue.exercise.length],
+    ['ate out', 0, 1, null, 1],
+  );
+  assert.deepEqual([wed.weight_kg, wed.sleep_hours, wed.note, wed.exercised], [86.8, 7, 'keep me', null]);
+
+  // Answering "no exercise" for a day records a rest day and removes its sessions.
+  await call('PUT', '/api/days/2026-09-29', { body: { timezone: 'Europe/London', exercise: [] } });
+  const tue2 = await (await call('GET', '/api/days/2026-09-29')).json();
+  assert.equal(tue2.exercised, 0);
+  assert.deepEqual(tue2.exercise, []);
+  assert.equal(tue2.note, 'ate out');
+});
+
 test('invalid input is rejected with 400 and nothing is written', async () => {
   const res = await call('PUT', '/api/days', {
     body: {
@@ -180,8 +215,8 @@ test('export returns every day as CSV', async () => {
   assert.match(res.headers.get('Content-Disposition'), /ynhetrack-export-\d{4}-\d{2}-\d{2}\.csv/);
   const lines = (await res.text()).trim().split('\r\n');
   assert.equal(lines.length, 3);
-  assert.equal(lines[1], '2026-09-26,,,yes,0,0,2,0,0,2,,0,,Asia/Tokyo');
-  assert.equal(lines[2], '2026-09-27,87.2,,,0,0,0,0,0,0,bike:30,30,ate out,Asia/Tokyo');
+  assert.equal(lines[1], '2026-09-26,,,yes,0,0,2,0,0,2,,,0,,Asia/Tokyo');
+  assert.equal(lines[2], '2026-09-27,87.2,,,0,0,0,0,0,0,yes,bike:30,30,ate out,Asia/Tokyo');
 });
 
 test('settings returns the weekly exercise targets', async () => {

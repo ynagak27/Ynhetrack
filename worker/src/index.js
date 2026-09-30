@@ -18,7 +18,7 @@ async function readDays(db, from, to) {
   const where = from ? ' WHERE date BETWEEN ?1 AND ?2' : '';
   const params = from ? [from, to] : [];
   const [logs, drinks, exercise] = await db.batch([
-    db.prepare(`SELECT date, weight_kg, sleep_hours, note, drank, timezone FROM daily_log${where}`).bind(...params),
+    db.prepare(`SELECT date, weight_kg, sleep_hours, note, drank, exercised, timezone FROM daily_log${where}`).bind(...params),
     db.prepare(`SELECT date, type, count, timezone FROM drinks${where} ORDER BY date, id`).bind(...params),
     db.prepare(`SELECT id, date, kind, minutes, effort_1_5, timezone FROM exercise${where} ORDER BY date, id`).bind(...params),
   ]);
@@ -26,7 +26,7 @@ async function readDays(db, from, to) {
 }
 
 function emptyDay(date) {
-  return { date, weight_kg: null, sleep_hours: null, note: null, drank: null, timezone: null, drinks: [], exercise: [] };
+  return { date, weight_kg: null, sleep_hours: null, note: null, drank: null, exercised: null, timezone: null, drinks: [], exercise: [] };
 }
 
 async function readJson(request) {

@@ -16,15 +16,21 @@ export function buildSaveStatements(day) {
   const { date, timezone } = day;
   const stmts = [];
 
-  // daily_log columns to write: the log section, plus `drank` when drinks were sent.
+  // daily_log columns to write: the log fields sent, plus the drinks / exercise answers
+  // (`drank`, `exercised`) when those sections were sent.
   const cols = {};
   if (day.log) Object.assign(cols, day.log);
-  if (day.drinks !== undefined) cols.drank = day.drinks === null ? null : day.drinks.length > 0 ? 1 : 0;
+  const answer = (list) => (list === null ? null : list.length > 0 ? 1 : 0);
+  if (day.drinks !== undefined) cols.drank = answer(day.drinks);
+  if (day.exercise !== undefined) cols.exercised = answer(day.exercise);
 
   const names = Object.keys(cols);
-  if (names.length === 1 && names[0] === 'drank' && cols.drank === null) {
-    // Clearing the drinks answer must not create an empty day.
-    stmts.push({ sql: `UPDATE daily_log SET drank = NULL, updated_at = ${NOW} WHERE date = ?`, params: [date] });
+  if (!day.log && names.length > 0 && names.every((n) => cols[n] === null)) {
+    // Only clearing answers: update existing rows, never create an empty day.
+    stmts.push({
+      sql: `UPDATE daily_log SET ${names.map((n) => `${n} = NULL`).join(', ')}, updated_at = ${NOW} WHERE date = ?`,
+      params: [date],
+    });
   } else if (names.length > 0) {
     // Only a log section changes the day's timezone; a drinks-only save keeps it.
     const updates = names.map((n) => `${n} = excluded.${n}`);
@@ -51,7 +57,7 @@ export function buildSaveStatements(day) {
 
   if (day.exercise !== undefined) {
     stmts.push({ sql: 'DELETE FROM exercise WHERE date = ?', params: [date] });
-    if (day.exercise.length > 0) {
+    if (day.exercise && day.exercise.length > 0) {
       stmts.push({
         sql: `INSERT INTO exercise (date, kind, minutes, effort_1_5, timezone) VALUES ${placeholders(day.exercise.length, 5)}`,
         params: day.exercise.flatMap((e) => [date, e.kind, e.minutes, e.effort_1_5, timezone]),
@@ -90,6 +96,7 @@ export function mergeDays(logs, drinks, exercise) {
         sleep_hours: null,
         note: null,
         drank: null,
+        exercised: null,
         timezone: null,
         drinks: [],
         exercise: [],
@@ -103,6 +110,7 @@ export function mergeDays(logs, drinks, exercise) {
       sleep_hours: l.sleep_hours,
       note: l.note,
       drank: l.drank,
+      exercised: l.exercised,
       timezone: l.timezone,
     });
   }

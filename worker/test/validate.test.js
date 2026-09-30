@@ -22,8 +22,13 @@ test('validateLog normalises weight, sleep and note', () => {
     sleep_hours: 7.5,
     note: 'ate out',
   });
-  assert.deepEqual(validateLog({}), { weight_kg: null, sleep_hours: null, note: null });
-  assert.deepEqual(validateLog({ weight_kg: '', note: '   ' }), { weight_kg: null, sleep_hours: null, note: null });
+  assert.deepEqual(validateLog({ weight_kg: '', note: '   ' }), { weight_kg: null, note: null });
+});
+
+test('validateLog returns only the fields that were sent', () => {
+  assert.deepEqual(validateLog({}), {});
+  assert.deepEqual(validateLog({ note: 'ate out' }), { note: 'ate out' });
+  assert.deepEqual(validateLog({ weight_kg: 86.8, sleep_hours: null }), { weight_kg: 86.8, sleep_hours: null });
 });
 
 test('validateLog rejects out-of-range values', () => {
@@ -60,6 +65,7 @@ test('validateExercise checks kind, minutes and optional effort', () => {
     { kind: 'strength_a', minutes: 60, effort_1_5: 4 },
   ]);
   assert.deepEqual(validateExercise([]), []);
+  assert.equal(validateExercise(null), null);
   assert.throws(() => validateExercise([{ kind: 'yoga', minutes: 30 }]), ValidationError);
   assert.throws(() => validateExercise([{ kind: 'walk', minutes: 0 }]), ValidationError);
   assert.throws(() => validateExercise([{ kind: 'walk', minutes: 30, effort_1_5: 6 }]), ValidationError);
