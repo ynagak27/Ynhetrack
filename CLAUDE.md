@@ -37,7 +37,7 @@ Update these status lines at the end of every session.
 - `worker/test/` — `node:test` suites. `api.test.js` runs the real fetch handler against `fake-d1.js`
   (the real migration on Node's built-in `node:sqlite`), so no test dependencies are needed.
 - Commands: `npm test` (repo root, all tests); in `worker/`: `npm run dev`, `npm run deploy`,
-  `npm run db:migrate:local|remote`. Serve the app locally with `python3 -m http.server 8000` in `web/`.
+  `npm run db:migrate:local|remote`; for both users `npm run db:migrate:all` then `npm run deploy:all`. Serve the app locally with `python3 -m http.server 8000` in `web/`.
 
 ## API (phase 1)
 
@@ -88,3 +88,4 @@ Add every decision made with the user here, newest last, with the date.
 - 2026-09-30 — Exercise uses the same format as drinks: "No exercise / Exercised", then one row per kind with − minutes + (first + jumps to the preset; below 5 min = not done). Optional effort 1–5 is kept and shows under each kind that has minutes. One entry per kind per day.
 - 2026-09-30 — `daily_log.exercised` (migration 0002) stores the exercise answer like `drank`: 1 / 0 (rest day) / NULL (not answered). The note belongs to the "Yesterday" day.
 - 2026-09-30 — `log` updates are partial (only fields sent are written) so the morning weight and yesterday's note can be saved to different dates without wiping each other.
+- 2026-10-04 — A second person (the user's partner) uses the app with separate data: wrangler environment `partner` deploys the same code as Worker `ynhetrack-partner` with its own D1 database `ynhetrack-partner` and its own `API_TOKEN`, in the user's Cloudflare account. Same GitHub Pages app; each phone stores its own Worker URL + token. Every server change must be migrated and deployed to both (`db:migrate:all`, `deploy:all`). Phase 3 will need per-environment settings (targets, email address).

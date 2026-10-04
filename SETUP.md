@@ -186,14 +186,36 @@ The app is a **morning** log. Open it after you weigh yourself:
   shows that morning plus the day before.
 - **Export:** **⚙** → **Download CSV**, any time.
 
+## 11. A second person (partner)
+
+A second person gets their own Worker (`ynhetrack-partner`) and database (`ynhetrack-partner`) in the same
+Cloudflare account, configured as the `partner` environment in `worker/wrangler.toml`. Their data is
+completely separate in the app. As the Cloudflare account owner you could still open their database in the
+dashboard, so make sure they're happy with that.
+
+One-time setup, from `worker/`:
+
+1. `npx wrangler d1 create ynhetrack-partner` and put the printed `database_id` in the `[env.partner]` block
+   of `worker/wrangler.toml`.
+2. `npm run db:migrate:partner` (answer **y**)
+3. `npm run deploy:partner`, which prints their address, e.g. `https://ynhetrack-partner.<subdomain>.workers.dev`
+4. Generate a **different** token (same `node -e …` command as step 6) and run
+   `npx wrangler secret put API_TOKEN --env partner`
+
+On their phone: open the same app link, add it to the home screen, and enter **their** Worker URL and
+**their** token.
+
+**Updates from now on:** whenever the server changes, run `npm run db:migrate:all` and then
+`npm run deploy:all`, so both servers stay in step.
+
 ---
 
 ## Everyday commands (from `worker/`)
 
 | What | Command |
 | --- | --- |
-| Deploy Worker changes | `npm run deploy` |
-| Apply new database migrations | `npm run db:migrate:remote` |
+| Deploy Worker changes (yours + partner's) | `npm run deploy:all` |
+| Apply new database migrations (both) | `npm run db:migrate:all` |
 | Replace the API token | `npx wrangler secret put API_TOKEN` (then update it in the app's Settings) |
 | Watch live Worker logs | `npx wrangler tail` |
 | Look at the data | `npx wrangler d1 execute ynhetrack --remote --command "SELECT * FROM daily_log ORDER BY date DESC LIMIT 10"` |
