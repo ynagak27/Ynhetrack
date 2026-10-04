@@ -15,3 +15,22 @@ database_name = "ynhetrack"
 # Created with `npx wrangler d1 create ynhetrack` (see SETUP.md). Not a secret.
 database_id = "e57a1193-194e-4697-b51d-70dbb559472b"
 migrations_dir = "migrations"
+
+# ---------------------------------------------------------------------------
+# Second person ("partner"): the same code deployed as a separate Worker
+# (ynhetrack-partner) with its own D1 database and its own API_TOKEN secret.
+# Vars and bindings are not inherited by environments, so they are repeated here.
+# Commands: npm run db:migrate:partner, npm run deploy:partner,
+#           npx wrangler secret put API_TOKEN --env partner
+[env.partner]
+name = "ynhetrack-partner"
+
+[env.partner.vars]
+ALLOWED_ORIGINS = "https://ynagak27.github.io,http://localhost:8000,http://127.0.0.1:8000"
+
+[[env.partner.d1_databases]]
+binding = "DB"
+database_name = "ynhetrack-partner"
+# Created with `npx wrangler d1 create ynhetrack-partner`. Not a secret.
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"

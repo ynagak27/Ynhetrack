@@ -7,7 +7,11 @@
     "deploy": "wrangler deploy",
     "test": "node --test test/*.test.js",
     "db:migrate:local": "wrangler d1 migrations apply ynhetrack --local",
-    "db:migrate:remote": "wrangler d1 migrations apply ynhetrack --remote"
+    "db:migrate:remote": "wrangler d1 migrations apply ynhetrack --remote",
+    "deploy:partner": "wrangler deploy --env partner",
+    "deploy:all": "wrangler deploy && wrangler deploy --env partner",
+    "db:migrate:partner": "wrangler d1 migrations apply ynhetrack-partner --env partner --remote",
+    "db:migrate:all": "wrangler d1 migrations apply ynhetrack --remote && wrangler d1 migrations apply ynhetrack-partner --env partner --remote"
   },
   "devDependencies": {
     "wrangler": "4.142.0"
