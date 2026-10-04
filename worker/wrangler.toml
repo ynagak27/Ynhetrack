@@ -32,5 +32,5 @@ ALLOWED_ORIGINS = "https://ynagak27.github.io,http://localhost:8000,http://127.0
 binding = "DB"
 database_name = "ynhetrack-partner"
 # Created with `npx wrangler d1 create ynhetrack-partner`. Not a secret.
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "c83ce7f4-1717-4bc1-93ae-9bc44b843ced"
 migrations_dir = "migrations"
