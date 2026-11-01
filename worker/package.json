@@ -14,6 +14,6 @@
     "db:migrate:all": "wrangler d1 migrations apply ynhetrack --remote && wrangler d1 migrations apply ynhetrack-partner --env partner --remote"
   },
   "devDependencies": {
-    "wrangler": "4.142.0"
+    "wrangler": "4.156.0"
   }
 }
